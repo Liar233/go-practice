@@ -7,165 +7,160 @@ import (
 
 func TestLRUCache_SetNewValues(t *testing.T) {
 
-	var ok bool
-
-	lurCache := NewLRUCache(3)
+	lruCache, _ := NewLRUCache(3)
 
 	for i := 0; i < 3; i++ {
 
 		key := fmt.Sprintf("key_%d", i)
 		value := fmt.Sprintf("value_%d", i)
 
-		ok = lurCache.Set(Key(key), value)
+		ok := lruCache.Set(Key(key), value)
 
-		if ok != false {
+		if ok {
 
-			t.Fatalf("SetNewValues error: set return true for non-existet value")
+			t.Errorf("SetNewValues error: set return true for non-existet value")
 		}
 
-		if lurCache.queue.Len() != i+1 {
+		if lruCache.queue.Len() != i+1 {
 
-			t.Fatalf("SetNewValues error: invalid queue len")
+			t.Errorf("SetNewValues error: invalid queue len")
 		}
 	}
 }
 
 func TestLRUCache_SetExistentValue(t *testing.T) {
 
-	var ok bool
+	lruCache := makeAndFillCache(3)
 
-	lurCache := NewLRUCache(3)
+	_ = lruCache.Set(Key("key_1"), "value_1")
 
-	_ = lurCache.Set(Key("key_1"), "value_1")
+	ok := lruCache.Set(Key("key_1"), "value_2")
 
-	ok = lurCache.Set(Key("key_1"), "value_2")
+	if !ok {
 
-	if ok != true {
-
-		t.Fatalf("SetExistentValue error: Set() return not true for existent key")
+		t.Errorf("SetExistentValue error: Set() return not true for existent key")
 	}
 }
 
 func TestLRUCache_GetNonExistentValue(t *testing.T) {
 
-	lurCache := NewLRUCache(3)
+	lruCache, _ := NewLRUCache(3)
 
-	value, ok := lurCache.Get(Key("key_1"))
+	value, ok := lruCache.Get(Key("key_1"))
 
-	if ok != false {
+	if ok {
 
-		t.Fatalf("GetNonExistentValue error: Get() return not false flag for non-existent key")
+		t.Errorf("GetNonExistentValue error: Get() return not false flag for non-existent key")
 	}
 
 	if value != nil {
 
-		t.Fatalf("GetNonExistentValue error: Get() return not nil value for non-existent key")
+		t.Errorf("GetNonExistentValue error: Get() return not nil value for non-existent key")
 	}
 }
 
 func TestLRUCache_GetExistentValue(t *testing.T) {
 
-	lurCache := NewLRUCache(3)
+	lruCache := makeAndFillCache(3)
 
-	lurCache.Set(Key("key_1"), "value_1")
+	lruCache.Set(Key("key_1"), "value_1")
 
-	value, ok := lurCache.Get(Key("key_1"))
+	value, ok := lruCache.Get(Key("key_1"))
 
-	if ok != true {
+	if !ok {
 
-		t.Fatalf("GetExistentValue error: Get() return not true flag for existent key")
+		t.Errorf("GetExistentValue error: Get() return not true flag for existent key")
 	}
 
 	if value.(string) != "value_1" {
 
-		t.Fatalf("GetNonExistentValue error: Get() return ivalid value for existent key")
+		t.Errorf("GetNonExistentValue error: Get() return ivalid value for existent key")
 	}
 }
 
 func TestLRUCache_GetQueueOrder(t *testing.T) {
 
-	lurCache := NewLRUCache(3)
+	lruCache := makeAndFillCache(3)
 
-	lurCache.Set(Key("key_1"), "value_1")
-	lurCache.Set(Key("key_2"), "value_2")
-	lurCache.Set(Key("key_3"), "value_3")
+	lruCache.Get(Key("key_1"))
 
-	lurCache.Get(Key("key_1"))
+	first := lruCache.queue.Front()
 
-	first := lurCache.queue.Front()
+	if first.Value.(QueueElement).Value != "value_1" {
 
-	if first.Value.(string) != "value_1" {
-
-		t.Fatalf("GetQueueOrder error: Get() does not change queue")
+		t.Errorf("GetQueueOrder error: Get() does not change queue")
 	}
 }
 
 func TestLRUCache_Clear(t *testing.T) {
 
-	lurCache := NewLRUCache(3)
+	lruCache := makeAndFillCache(3)
 
-	lurCache.Set(Key("key_1"), "value_1")
-	lurCache.Set(Key("key_2"), "value_2")
-	lurCache.Set(Key("key_3"), "value_3")
+	lruCache.Clear()
 
-	lurCache.Clear()
+	if lruCache.queue.Len() != 0 {
 
-	if lurCache.queue.Len() != 0 {
-
-		t.Fatalf("Clear error: Clear() queue len invalid")
+		t.Errorf("Clear error: Clear() queue len invalid")
 	}
 
-	if len(lurCache.items) != 0 {
+	if len(lruCache.items) != 0 {
 
-		t.Fatalf("Clear error: Clear() items len invalid")
+		t.Errorf("Clear error: Clear() items len invalid")
 	}
 }
 
 func TestLRUCache_QueueOrderWithoutDuplicates(t *testing.T) {
 
-	lurCache := NewLRUCache(3)
+	lruCache := makeAndFillCache(3)
 
-	lurCache.Set(Key("key_1"), "value_1")
-	lurCache.Set(Key("key_2"), "value_2")
-	lurCache.Set(Key("key_3"), "value_3")
+	first := lruCache.queue.Front()
 
-	first := lurCache.queue.Front()
+	if first.Value.(QueueElement).Value != "value_3" {
 
-	if first.Value.(string) != "value_3" {
-
-		t.Fatalf("QueueOrderWithoutDuplicates error: invalid queue order")
+		t.Errorf("QueueOrderWithoutDuplicates error: invalid queue order")
 	}
 
-	last := lurCache.queue.Back()
+	last := lruCache.queue.Back()
 
-	if last.Value.(string) != "value_1" {
+	if last.Value.(QueueElement).Value != "value_1" {
 
-		t.Fatalf("QueueOrderWithoutDuplicates error: invalid queue order")
+		t.Errorf("QueueOrderWithoutDuplicates error: invalid queue order")
 	}
 }
 
-func TestLURCache_Overflow(t *testing.T) {
+func TestLRUCache_Overflow(t *testing.T) {
 
-	lurCache := NewLRUCache(2)
+	lruCache := makeAndFillCache(2)
 
-	lurCache.Set(Key("key_1"), "value_1")
-	lurCache.Set(Key("key_2"), "value_2")
-	lurCache.Set(Key("key_3"), "value_3")
+	_, ok := lruCache.Get(Key("value1"))
 
-	_, ok := lurCache.Get(Key("value1"))
+	if ok {
 
-	if ok != false {
-
-		t.Fatalf("Overflow error: return old value")
+		t.Errorf("Overflow error: return old value")
 	}
 
-	if len(lurCache.items) != 2 {
+	if len(lruCache.items) != 2 {
 
-		t.Fatalf("Overflow error: items size greater then expected")
+		t.Errorf("Overflow error: items size greater then expected")
 	}
 
-	if lurCache.queue.Len() != 2 {
+	if lruCache.queue.Len() != 2 {
 
-		t.Fatalf("Overflow error: return old value")
+		t.Errorf("Overflow error: return old value")
 	}
+}
+
+func makeAndFillCache(cap int) *LRUCache {
+
+	lruCache, _ := NewLRUCache(cap)
+
+	for i := 1; i <= cap; i++ {
+
+		key := fmt.Sprintf("key_%d", i)
+		value := fmt.Sprintf("value_%d", i)
+
+		lruCache.Set(Key(key), value)
+	}
+
+	return lruCache
 }

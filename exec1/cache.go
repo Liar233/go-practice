@@ -1,6 +1,9 @@
 package main
 
-import "container/list"
+import (
+	"container/list"
+	"errors"
+)
 
 type Key string
 
@@ -19,24 +22,40 @@ type LRUCache struct {
 	queue *list.List
 }
 
-func NewLRUCache(cap int) *LRUCache {
+type QueueElement struct {
+	Key   Key
+	Value interface{}
+}
+
+func NewLRUCache(cap int) (*LRUCache, error) {
+
+	if cap <= 0 {
+
+		return nil, errors.New("capacity less less then one")
+	}
 
 	return &LRUCache{
 		cap:   cap,
 		items: make(map[Key]*list.Element, cap),
 		queue: list.New(),
-	}
+	}, nil
 }
 
 func (LRU *LRUCache) Set(key Key, value interface{}) bool {
 
-	el, ok := LRU.items[key]
-	newEl := LRU.queue.PushFront(value)
-	LRU.items[key] = newEl
+	queueElement := QueueElement{
+		Key:   key,
+		Value: value,
+	}
+
+	newElement := LRU.queue.PushFront(queueElement)
+
+	element, ok := LRU.items[key]
+	LRU.items[key] = newElement
 
 	if ok {
 
-		LRU.queue.Remove(el)
+		LRU.queue.Remove(element)
 
 		return true
 	}
@@ -45,14 +64,7 @@ func (LRU *LRUCache) Set(key Key, value interface{}) bool {
 
 		last := LRU.queue.Back()
 
-		for k, val := range LRU.items {
-
-			if val == last {
-
-				delete(LRU.items, k)
-				break
-			}
-		}
+		delete(LRU.items, last.Value.(QueueElement).Key)
 
 		LRU.queue.Remove(last)
 	}
@@ -74,7 +86,7 @@ func (LRU *LRUCache) Get(key Key) (interface{}, bool) {
 		LRU.queue.MoveToFront(val)
 	}
 
-	return val.Value, true
+	return val.Value.(QueueElement).Value, true
 }
 
 func (LRU *LRUCache) Clear() {
