@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"errors"
+	"sync"
 )
 
 type Key string
@@ -14,6 +15,7 @@ type Cache interface {
 }
 
 type LRUCache struct {
+	sync.Mutex
 	// количество сохраняемых в кэше элементов
 	cap int
 	// хеш-таблица отображающая ключ (строка) на элемент очереди
@@ -42,6 +44,9 @@ func NewLRUCache(cap int) (*LRUCache, error) {
 }
 
 func (LRU *LRUCache) Set(key Key, value interface{}) bool {
+
+	LRU.Lock()
+	defer LRU.Unlock()
 
 	queueElement := QueueElement{
 		Key:   key,
@@ -73,6 +78,9 @@ func (LRU *LRUCache) Set(key Key, value interface{}) bool {
 }
 
 func (LRU *LRUCache) Get(key Key) (interface{}, bool) {
+
+	LRU.Lock()
+	defer LRU.Unlock()
 
 	val, ok := LRU.items[key]
 
